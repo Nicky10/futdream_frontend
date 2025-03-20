@@ -3,9 +3,10 @@ import { getBookings, createBooking } from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 import LogoutButton from "../components/LogoutButton";
 import BookingCalendar from "../components/BookingCalendar";
+import PrivateRoute from "../components/PrivateRoute";
 
 export default function BookingsPage() {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const [bookings, setBookings] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableHours, setAvailableHours] = useState([]);
@@ -19,19 +20,23 @@ export default function BookingsPage() {
                   .join(" "); // Une las palabras nuevamente
 
   useEffect(() => {
+    console.log("Usuario en BookingsPage:", user);
+    console.log("Cargando usuario en BookingsPage:", loading);
+    if (loading || !user) return; // 🟢 Solo ejecuta si el usuario ya está autenticado
+
     const fetchBookings = async () => {
-      if (user) {
+      try {
         const token = localStorage.getItem("token");
-        try {
-          const { data } = await getBookings(token);
-          setBookings(data);
-        } catch (error) {
-          console.error("Error al obtener reservas", error);
-        }
+        if (!token) return;
+        const { data } = await getBookings(token);
+        setBookings(data);
+      } catch (error) {
+        console.error("Error al obtener reservas", error);
       }
     };
+
     fetchBookings();
-  }, [user]);
+  }, [user, loading]); // ⚡ Se ejecuta cuando el usuario se actualiza
 
   const handleServiceChange = (e) => {
     const newServiceType = e.target.value;
@@ -59,18 +64,18 @@ export default function BookingsPage() {
   };
 
   return (
+    <PrivateRoute>
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Reservas</h1>
-        <LogoutButton />
       </div>
 
       {user ? (
         <>
-          <h2 className="text-xl font-semibold mb-4">Bienvenido, {user.email}</h2>
+          <h2 className="text-xl font-semibold mb-4">Bienvenido a la seccion de Reservas, {user.firstName} {user.firstLastName}.</h2>
 
           {/* Selección de tipo de servicio */}
-          <label className="block text-sm font-medium mb-1">Selecciona el servicio:</label>
+          <label className="block text-sm font-medium mb-1">Por favor selecciona el servicio que deseas reservar:</label>
           <select 
             value={serviceType} 
             onChange={handleServiceChange} 
@@ -153,5 +158,6 @@ export default function BookingsPage() {
         <p className="text-center text-gray-600">Inicia sesión para ver tus reservas.</p>
       )}
     </div>
+    </PrivateRoute>
   );
 }
